@@ -38,44 +38,25 @@ end
 
 function TOOL:LeftClick(trace)
 
-	local r = self:GetClientNumber("r", 0)
-	local g = self:GetClientNumber("g", 0)
-	local b = self:GetClientNumber("b", 0)
-	local factor = self:GetClientNumber("factor", 0)
-	local refractamount = self:GetClientNumber("refractamount", 0)
-	local disableshadow = self:GetClientNumber("disableshadow", 0)
-	local anim = self:GetClientNumber("anim", 0)
-	local anim_numpadkey = self:GetClientNumber("anim_numpadkey", 0)
-	local anim_toggle = self:GetClientNumber("anim_toggle", 0)
-	local anim_starton = self:GetClientNumber("anim_starton", 0)
-	local anim_timein = self:GetClientNumber("anim_timein", 0)
-	local anim_timeout = self:GetClientNumber("anim_timeout", 0)
-
-	local ply = self:GetOwner()
-
-	if IsValid(trace.Entity) then
-
+	local ent = trace.Entity
+	if IsValid(ent) then
 		if SERVER then
-
-			GiveMatproxyTF2CloakEffect(ply, trace.Entity, {
-				TintR = r, 
-				TintG = g, 
-				TintB = b, 
-				Factor = factor,
-				RefractAmount = refractamount,
-				DisableShadow = disableshadow,
-				Anim = anim,
-				Anim_NumpadKey = anim_numpadkey,
-				Anim_Toggle = anim_toggle,
-				Anim_StartOn = anim_starton,
-				Anim_TimeIn = anim_timein,
-				Anim_TimeOut = anim_timeout,
+			GiveMatproxyTF2CloakEffect(self:GetOwner(), ent, {
+				TintR = self:GetClientNumber("r", 0), 
+				TintG = self:GetClientNumber("g", 0), 
+				TintB = self:GetClientNumber("b", 0), 
+				Factor = self:GetClientNumber("factor", 0),
+				RefractAmount = self:GetClientNumber("refractamount", 0),
+				DisableShadow = self:GetClientNumber("disableshadow", 0),
+				Anim = self:GetClientNumber("anim", 0),
+				Anim_NumpadKey = self:GetClientNumber("anim_numpadkey", 0),
+				Anim_Toggle = self:GetClientNumber("anim_toggle", 0),
+				Anim_StartOn = self:GetClientNumber("anim_starton", 0),
+				Anim_TimeIn = self:GetClientNumber("anim_timein", 0),
+				Anim_TimeOut = self:GetClientNumber("anim_timeout", 0),
 			})
-
 		end
-
 		return true
-
 	end
 
 end
@@ -86,9 +67,7 @@ end
 function TOOL:RightClick(trace)
 
 	if IsValid(trace.Entity) then
-
 		if SERVER then
-
 			if IsValid(trace.Entity.AttachedEntity) then
 				trace.Entity = trace.Entity.AttachedEntity
 			end
@@ -107,11 +86,8 @@ function TOOL:RightClick(trace)
 				self:GetOwner():ConCommand("matproxy_tf2cloakeffect_anim_timein " .. trace.Entity.EntityMods.MatproxyTF2CloakEffect.Anim_TimeIn)
 				self:GetOwner():ConCommand("matproxy_tf2cloakeffect_anim_timeout " .. trace.Entity.EntityMods.MatproxyTF2CloakEffect.Anim_TimeOut)
 			end
-
 		end
-
 		return true
-
 	end
 
 end
@@ -122,23 +98,19 @@ end
 function TOOL:Reload(trace)
 
 	if IsValid(trace.Entity) then
-
 		if SERVER then
-
 			if IsValid(trace.Entity.AttachedEntity) then
 				trace.Entity = trace.Entity.AttachedEntity
 			end
 
-			if IsValid(trace.Entity.ProxyentCloakEffect) then
-				trace.Entity.ProxyentCloakEffect:Remove()
+			local old = trace.Entity.ProxyentCloakEffect
+			if IsValid(old) then
+				old:Remove()
 				trace.Entity.ProxyentCloakEffect = nil
 				duplicator.ClearEntityModifier(trace.Entity, "MatproxyTF2CloakEffect")
 			end
-
 		end
-
 		return true
-
 	end
 
 end
@@ -149,38 +121,37 @@ end
 if SERVER then
 
 	function GiveMatproxyTF2CloakEffect(ply, ent, Data)
-
 		if !IsValid(ent) then return end
-
 		if IsValid(ent.AttachedEntity) then
 			ent = ent.AttachedEntity
 		end
 
-		if IsValid(ent.ProxyentCloakEffect) and ent.ProxyentCloakEffect:GetTargetEnt() == ent then //NOTE: Entities pasted using GenericDuplicatorFunction (i.e. anything without custom dupe functionality) will still have the original entity's Proxyent value saved into their table because GenericDuplicatorFunction uses table.Merge(). In most cases this won't matter because the saved Proxyent is NULL, but if the original entity still exists, then the value will point to THAT entity's Proxyent instead, which we don't want to delete by mistake.
-			ent.ProxyentCloakEffect:Remove()
+		local old = ent.ProxyentCloakEffect
+		if IsValid(old) and old:GetParent() == ent then //NOTE: Entities pasted using GenericDuplicatorFunction (i.e. anything without custom dupe functionality) will still have the original entity's Proxyent value saved into their table because GenericDuplicatorFunction uses table.Merge(). In most cases this won't matter because the saved Proxyent is NULL, but if the original entity still exists, then the value will point to THAT entity's Proxyent instead, which we don't want to delete by mistake.
+			old:Remove()
 		end
-		ent.ProxyentCloakEffect = ents.Create("proxyent_tf2cloakeffect")
 
-		ent.ProxyentCloakEffect:SetTargetEnt(ent)
-		ent.ProxyentCloakEffect:SetCloakTintVector(Vector(Data.TintR/255,Data.TintG/255,Data.TintB/255))
-		ent.ProxyentCloakEffect:SetCloakAnim(Data.Anim == 1)
-		if Data.Anim == 1 then
-			numpad.OnDown(ply, Data.Anim_NumpadKey, "Proxyent_TF2CloakEffect_Numpad", ent.ProxyentCloakEffect, true, Data.Anim_Toggle == 1, Data.Anim_StartOn == 1)
-			numpad.OnUp(ply, Data.Anim_NumpadKey, "Proxyent_TF2CloakEffect_Numpad", ent.ProxyentCloakEffect, false, Data.Anim_Toggle == 1, Data.Anim_StartOn == 1)
-			ent.ProxyentCloakEffect:SetCloakAnimState(Data.Anim_StartOn == 1)
-			ent.ProxyentCloakEffect:SetCloakAnimTimeIn(Data.Anim_TimeIn)
-			ent.ProxyentCloakEffect:SetCloakAnimTimeOut(Data.Anim_TimeOut)
-		else
-			ent.ProxyentCloakEffect:SetCloakFactor(Data.Factor)
+		local pent = ents.Create("proxyent_tf2cloakeffect")
+		if IsValid(pent) then
+			pent:SetPos(ent:GetPos())
+			pent:SetParent(ent)
+			pent:SetColor(Color(Data.TintR, Data.TintG, Data.TintB))
+			pent:SetCloakAnim(Data.Anim == 1)
+			if Data.Anim == 1 then
+				numpad.OnDown(ply, Data.Anim_NumpadKey, "Proxyent_TF2CloakEffect_Numpad", pent, true, Data.Anim_Toggle == 1, Data.Anim_StartOn == 1)
+				numpad.OnUp(ply, Data.Anim_NumpadKey, "Proxyent_TF2CloakEffect_Numpad", pent, false, Data.Anim_Toggle == 1, Data.Anim_StartOn == 1)
+				pent:SetCloakAnimState(Data.Anim_StartOn == 1)
+				pent:SetCloakAnimTimeIn(Data.Anim_TimeIn)
+				pent:SetCloakAnimTimeOut(Data.Anim_TimeOut)
+			else
+				pent:SetCloakFactor(Data.Factor)
+			end
+			pent:SetCloakRefractAmount(Data.RefractAmount)
+			pent:SetCloakDisablesShadow(Data.DisableShadow == 1)
+			ent.ProxyentCloakEffect = pent
+			pent:Spawn()
 		end
-		ent.ProxyentCloakEffect:SetCloakRefractAmount(Data.RefractAmount)
-		ent.ProxyentCloakEffect:SetCloakDisablesShadow(Data.DisableShadow == 1)
-
-		ent.ProxyentCloakEffect:Spawn()
-		ent.ProxyentCloakEffect:Activate()
-
 		duplicator.StoreEntityModifier(ent, "MatproxyTF2CloakEffect", Data)
-
 	end
 
 	duplicator.RegisterEntityModifier("MatproxyTF2CloakEffect", GiveMatproxyTF2CloakEffect)
@@ -258,7 +229,7 @@ function TOOL.BuildCPanel(panel)
 		},
 	})
 	colorpanel:ClearSelection()  //the default highlighting method is bad and starts off by highlighting ALL of the lines that have ANY matching convars - meaning, if we have any of 
-				     //these selected, all of them will be highlighted by default since they all have sparksc = "0". not having anything selected by default isn't as bad.
+				     //these selected, all of them will be highlighted by default since they all have factor = "0.85". not having anything selected by default isn't as bad.
 
 	panel:AddControl("Color", {
 		Label = "Cloak Tint Color",

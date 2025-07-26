@@ -15,8 +15,6 @@ ENT.AutomaticFrameAdvance	= true
 
 function ENT:SetupDataTables()
 
-	self:NetworkVar("Entity", 0, "TargetEnt")
-	self:NetworkVar("Vector", 0, "CloakTintVector")
 	self:NetworkVar("Float", 0, "CloakFactor")
 	self:NetworkVar("Float", 1, "CloakRefractAmount")
 	self:NetworkVar("Bool", 0, "CloakDisablesShadow")
@@ -34,16 +32,19 @@ end
 
 function ENT:Initialize()
 
-	local targetent = self:GetTargetEnt()
+	if SERVER then self:SetTransmitWithParent(true) end
 
-	if !IsValid(targetent) then MsgN("Cloak effect entity has no target!") self:Remove() return end
-	if !self:GetCloakTintVector() then MsgN("Cloak effect entity has no cloak tint set!") self:Remove() return end
-	if !self:GetCloakFactor() then MsgN("Cloak effect entity has no cloak factor set!") self:Remove() return end
+	local ent = self:GetParent()
+	if CLIENT then
+		//Store color as a vector so the proxy func doesn't have to make a new one each frame
+		local col = self:GetColor()
+		self.Color = Vector(col.r/255, col.g/255, col.b/255)
+		if IsValid(ent) then
+			//Expose this value to the client so the matproxy can pick it up
+			ent.ProxyentCloakEffect = self
+		end
+	end
 
-	targetent.ProxyentCloakEffect = self
-
-	self:SetPos(targetent:GetPos())
-	self:SetParent(targetent)
 	self:SetNoDraw(true)
 	self:SetModel("models/props_junk/watermelon01.mdl") //dummy model to prevent addons that look for the error model from affecting this entity
 	self:DrawShadow(false) //make sure the ent's shadow doesn't render, just in case RENDERGROUP_NONE/SetNoDraw don't work and we have to rely on the blank draw function
@@ -54,6 +55,23 @@ function ENT:Initialize()
 			self:OnCloakAnimStateChanged(nil, nil, self:GetCloakAnimState()) //nwvar callbacks don't run when the value is set immediately upon spawning, so run it manually
 		end
 	end
+
+	//This needs to be a CallOnRemove and not ENT:OnRemove because self:GetParent will return null
+	self:CallOnRemove("RemoveProxyentCloakEffect", function(self, ent)
+		if IsValid(ent) then
+			if CLIENT then
+				//Make sure to reenable the shadow if we've gotten rid of it
+				if self:GetCloakDisablesShadow() then
+					ent:CreateShadow()
+					ent:MarkShadowAsDirty()
+				end
+			end
+
+			if ent.ProxyentCloakEffect == self then 
+				ent.ProxyentCloakEffect = nil
+			end
+		end
+	end, ent)
 
 end
 
@@ -112,37 +130,17 @@ if CLIENT then
 	function ENT:Think()
 
 		if self:GetCloakDisablesShadow() then
-			local targetent = self:GetTargetEnt()
-			if IsValid(targetent) then
+			local ent = self:GetParent()
+			if IsValid(ent) then
 				if self.ShouldDisableShadow then
-					targetent:DestroyShadow()
+					ent:DestroyShadow()
 				else
-					targetent:CreateShadow()
-					targetent:MarkShadowAsDirty()
+					ent:CreateShadow()
+					ent:MarkShadowAsDirty()
 				end
 			end
 		end
 
-	end
-
-end
-
-
-function ENT:OnRemove()
-
-	local targetent = self:GetTargetEnt()
-	if IsValid(targetent) then
-		if CLIENT then
-			//Make sure to reenable the shadow if we've gotten rid of it
-			if self:GetCloakDisablesShadow() then
-				targetent:CreateShadow()
-				targetent:MarkShadowAsDirty()
-			end
-		end
-
-		if targetent.ProxyentCloakEffect == self then 
-			targetent.ProxyentCloakEffect = nil
-		end
 	end
 
 end

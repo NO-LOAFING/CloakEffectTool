@@ -4,9 +4,9 @@ local bindfunc = function(self, mat, ent)
 
 	local factor = 0
 
-	if ent.ProxyentCloakEffect and ent.ProxyentCloakEffect.GetCloakTintVector then
+	if ent.ProxyentCloakEffect and ent.ProxyentCloakEffect.Color then
 		mat:SetInt("$cloakPassEnabled", 1)
-		mat:SetVector("$cloakcolortint", ent.ProxyentCloakEffect:GetCloakTintVector())
+		mat:SetVector("$cloakcolortint", ent.ProxyentCloakEffect.Color)
 		mat:SetFloat("$refractamount", ent.ProxyentCloakEffect:GetCloakRefractAmount())
 
 		//If the cloak effect is animated, then use CurTime() to determine what the cloak level should be at, otherwise use the static cloak factor value
