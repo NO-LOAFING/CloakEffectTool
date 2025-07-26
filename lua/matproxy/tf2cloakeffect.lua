@@ -30,15 +30,6 @@ local bindfunc = function(self, mat, ent)
 		else
 			factor = ent.ProxyentCloakEffect:GetCloakFactor()
 		end
-
-		if ent.ProxyentCloakEffect:GetCloakDisablesShadow() then
-			//Tell the proxy ent to disable the ent's shadow if cloaked
-			if factor > 0.27 then
-				ent.ProxyentCloakEffect.ShouldDisableShadow = true
-			else
-				ent.ProxyentCloakEffect.ShouldDisableShadow = false
-			end
-		end
 	end
 
 	mat:SetFloat("$cloakfactor", factor)

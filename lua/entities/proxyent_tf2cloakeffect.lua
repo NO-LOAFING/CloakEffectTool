@@ -50,20 +50,17 @@ function ENT:Initialize()
 	self:DrawShadow(false) //make sure the ent's shadow doesn't render, just in case RENDERGROUP_NONE/SetNoDraw don't work and we have to rely on the blank draw function
 
 	if self:GetCloakAnim() then
-		if CLIENT then 
-			self.CloakAnimTargetTime = CurTime()
-			self:OnCloakAnimStateChanged(nil, nil, self:GetCloakAnimState()) //nwvar callbacks don't run when the value is set immediately upon spawning, so run it manually
-		end
+		self.CloakAnimTargetTime = CurTime()
+		self:OnCloakAnimStateChanged(nil, nil, self:GetCloakAnimState()) //nwvar callbacks don't run when the value is set immediately upon spawning, so run it manually
 	end
 
 	//This needs to be a CallOnRemove and not ENT:OnRemove because self:GetParent will return null
 	self:CallOnRemove("RemoveProxyentCloakEffect", function(self, ent)
 		if IsValid(ent) then
-			if CLIENT then
+			if SERVER then
 				//Make sure to reenable the shadow if we've gotten rid of it
 				if self:GetCloakDisablesShadow() then
-					ent:CreateShadow()
-					ent:MarkShadowAsDirty()
+					ent:DrawShadow(true)
 				end
 			end
 
@@ -104,40 +101,66 @@ end
 
 function ENT:OnCloakAnimStateChanged(_,old,new)
 
-	if CLIENT then
-		if self:GetCloakAnim() and old != new then
-			//MsgN("setting cloak to ", new)
+	if self:GetCloakAnim() and old != new then
+		//MsgN("setting cloak to ", new)
 
-			//if the player toggles the cloak before the animation is done, then we should reverse the cloak from that point in the animation instead of the beginning
-			local diff = (self.CloakAnimTargetTime or 0) - CurTime()
-			if diff < 0 then diff = 0 end
+		//if the player toggles the cloak before the animation is done, then we should reverse the cloak from that point in the animation instead of the beginning
+		local diff = (self.CloakAnimTargetTime or 0) - CurTime()
+		if diff < 0 then diff = 0 end
 
-			if new then
-				//cloaking
-				self.CloakAnimTargetTime = ( CurTime() + self:GetCloakAnimTimeIn() - ( (diff / self:GetCloakAnimTimeOut()) * self:GetCloakAnimTimeIn() ) )
-			else
-				//decloaking
-				self.CloakAnimTargetTime = ( CurTime() + self:GetCloakAnimTimeOut() - ( (diff / self:GetCloakAnimTimeIn()) * self:GetCloakAnimTimeOut() ) )
-			end
+		if new then
+			//cloaking
+			self.CloakAnimTargetTime = ( CurTime() + self:GetCloakAnimTimeIn() - ( (diff / self:GetCloakAnimTimeOut()) * self:GetCloakAnimTimeIn() ) )
+		else
+			//decloaking
+			self.CloakAnimTargetTime = ( CurTime() + self:GetCloakAnimTimeOut() - ( (diff / self:GetCloakAnimTimeIn()) * self:GetCloakAnimTimeOut() ) )
 		end
 	end
 
 end
 
 
-if CLIENT then
+if SERVER then
 
 	function ENT:Think()
 
-		if self:GetCloakDisablesShadow() then
-			local ent = self:GetParent()
-			if IsValid(ent) then
-				if self.ShouldDisableShadow then
-					ent:DestroyShadow()
-				else
-					ent:CreateShadow()
-					ent:MarkShadowAsDirty()
+		if !self.DoneShadowUpdate then
+			if self:GetCloakDisablesShadow() then
+				local ent = self:GetParent()
+				if IsValid(ent) then
+					//Disable the ent's shadow if cloaked
+					local factor = 0
+					if self:GetCloakAnim() then
+						//Duplicate code from matproxy/tf2cloakeffect.lua, argh
+						local diff = (self.CloakAnimTargetTime or 0) - CurTime()
+						if self:GetCloakAnimState() then
+							//cloaking
+							if diff < 0 then
+								factor = 1
+							else
+								factor = 1 - (diff / self:GetCloakAnimTimeIn())
+							end
+						else
+							//decloaking
+							if diff < 0 then
+								factor = 0
+							else
+								factor = diff / self:GetCloakAnimTimeOut()
+							end
+						end
+					else
+						factor = self:GetCloakFactor()
+					end
+					ent:DrawShadow(factor < 0.27) //this sets the same variable used by other things like the shadow toggle tool, so it'll clobber those - too bad!
 				end
+			end
+
+			if self:GetCloakAnim() then
+				//run think again every frame, so that the shadow updates on time
+				self:NextThink(CurTime())
+				return true
+			else
+				self.DoneShadowUpdate = true //static cloak only needs to do this once
 			end
 		end
 
