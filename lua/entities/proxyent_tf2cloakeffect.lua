@@ -22,12 +22,10 @@ function ENT:SetupDataTables()
 	self:NetworkVar("Bool", 0, "CloakDisablesShadow")
 
 	self:NetworkVar("Bool", 1, "CloakAnim")
-	self:NetworkVar("Bool", 2, "CloakAnimToggle")
-	self:NetworkVar("Bool", 3, "CloakAnimActive")
+	self:NetworkVar("Bool", 2, "CloakAnimState")
+	self:NetworkVarNotify("CloakAnimState", self.OnCloakAnimStateChanged)
 	self:NetworkVar("Float", 2, "CloakAnimTimeIn")
 	self:NetworkVar("Float", 3, "CloakAnimTimeOut")
-
-	self:NetworkVar("Bool", 4, "CloakAnimNumpadUpdate")
 
 end
 
@@ -53,40 +51,65 @@ function ENT:Initialize()
 	if self:GetCloakAnim() then
 		if CLIENT then 
 			self.CloakAnimTargetTime = CurTime()
-			self:SetCloakAnimActive(!self:GetCloakAnimActive())
-			self:SetCloakAnimNumpadUpdate(true)
+			self:OnCloakAnimStateChanged(nil, nil, self:GetCloakAnimState()) //nwvar callbacks don't run when the value is set immediately upon spawning, so run it manually
 		end
 	end
 
 end
 
 
+if SERVER then
+
+	local function CloakNumpadFunction(pl, ent, keydown, toggle, starton)
+
+		if !IsValid(ent) then return end
+		if !ent["SetCloakAnimState"] then return end  //if the function doesn't exist yet, not if the function returns false
+	
+		if toggle then
+			if keydown then
+				ent:SetCloakAnimState(!ent:GetCloakAnimState())
+			end
+		else
+			if keydown then
+				ent:SetCloakAnimState(!starton)
+			else
+				ent:SetCloakAnimState(starton)
+			end
+		end
+	
+	end
+
+	numpad.Register("Proxyent_TF2CloakEffect_Numpad", CloakNumpadFunction)
+
+end
 
 
-if CLIENT then
+function ENT:OnCloakAnimStateChanged(_,old,new)
 
-	function ENT:Think()
-
-		//We don't want the server to set CloakAnimNumpadUpdate to false on the client because this can mess up the cloak animation. Instead, use a separate var so the client only 
-		//cares about the server ENABLING the update, and let the client disable the update on its own instead of having the networked var from the server disable it prematurely.
-		if self:GetCloakAnimNumpadUpdate() then self.CloakAnimNumpadUpdateNonNW = true end
-
-		if self:GetCloakAnim() and self.CloakAnimNumpadUpdateNonNW then
-			self:SetCloakAnimActive(!self:GetCloakAnimActive())
+	if CLIENT then
+		if self:GetCloakAnim() and old != new then
+			//MsgN("setting cloak to ", new)
 
 			//if the player toggles the cloak before the animation is done, then we should reverse the cloak from that point in the animation instead of the beginning
 			local diff = (self.CloakAnimTargetTime or 0) - CurTime()
 			if diff < 0 then diff = 0 end
 
-			if self:GetCloakAnimActive() then
+			if new then
+				//cloaking
 				self.CloakAnimTargetTime = ( CurTime() + self:GetCloakAnimTimeIn() - ( (diff / self:GetCloakAnimTimeOut()) * self:GetCloakAnimTimeIn() ) )
 			else
+				//decloaking
 				self.CloakAnimTargetTime = ( CurTime() + self:GetCloakAnimTimeOut() - ( (diff / self:GetCloakAnimTimeIn()) * self:GetCloakAnimTimeOut() ) )
 			end
-
-			self:SetCloakAnimNumpadUpdate(false)
-			self.CloakAnimNumpadUpdateNonNW = false
 		end
+	end
+
+end
+
+
+if CLIENT then
+
+	function ENT:Think()
 
 		if self:GetCloakDisablesShadow() then
 			local targetent = self:GetTargetEnt()
@@ -121,37 +144,6 @@ function ENT:OnRemove()
 			targetent.ProxyentCloakEffect = nil
 		end
 	end
-
-end
-
-
-
-
-//numpad functions
-if SERVER then
-
-	local function NumpadPress(pl, ent)
-
-		if !IsValid(ent) or ent:GetClass() != "proxyent_tf2cloakeffect" or !ent:GetCloakAnim() then return end
-
-		ent:SetCloakAnimNumpadUpdate(false) //this value never gets set back to false serverside, so we have to alternate it to get it to network the "true" value to the client again.
-		ent:SetCloakAnimNumpadUpdate(true)  //otherwise, it'll detect that the value hasn't changed serverside and it won't bother sending it.
-
-	end
-
-	local function NumpadRelease(pl, ent)
-
-		if !IsValid(ent) or ent:GetClass() != "proxyent_tf2cloakeffect" or !ent:GetCloakAnim() then return end
-	
-		if ent:GetCloakAnimToggle() then return end
-
-		ent:SetCloakAnimNumpadUpdate(false) //this value never gets set back to false serverside, so we have to alternate it to get it to network the "true" value to the client again.
-		ent:SetCloakAnimNumpadUpdate(true)  //otherwise, it'll detect that the value hasn't changed serverside and it won't bother sending it.
-	
-	end
-
-	numpad.Register("Proxyent_TF2CloakEffect_Press", NumpadPress)
-	numpad.Register("Proxyent_TF2CloakEffect_Release", NumpadRelease)
 
 end
 

@@ -12,7 +12,7 @@ local bindfunc = function(self, mat, ent)
 		//If the cloak effect is animated, then use CurTime() to determine what the cloak level should be at, otherwise use the static cloak factor value
 		if ent.ProxyentCloakEffect:GetCloakAnim() then
 			local diff = (ent.ProxyentCloakEffect.CloakAnimTargetTime or 0) - CurTime()
-			if ent.ProxyentCloakEffect:GetCloakAnimActive() then
+			if ent.ProxyentCloakEffect:GetCloakAnimState() then
 				//cloaking
 				if diff < 0 then
 					factor = 1

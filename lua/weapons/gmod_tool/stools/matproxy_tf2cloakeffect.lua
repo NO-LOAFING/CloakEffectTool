@@ -165,10 +165,9 @@ if SERVER then
 		ent.ProxyentCloakEffect:SetCloakTintVector(Vector(Data.TintR/255,Data.TintG/255,Data.TintB/255))
 		ent.ProxyentCloakEffect:SetCloakAnim(Data.Anim == 1)
 		if Data.Anim == 1 then
-			numpad.OnDown(ply, Data.Anim_NumpadKey, "Proxyent_TF2CloakEffect_Press", ent.ProxyentCloakEffect)
-			numpad.OnUp(ply, Data.Anim_NumpadKey, "Proxyent_TF2CloakEffect_Release", ent.ProxyentCloakEffect)
-			ent.ProxyentCloakEffect:SetCloakAnimToggle(Data.Anim_Toggle == 1)
-			ent.ProxyentCloakEffect:SetCloakAnimActive(Data.Anim_StartOn == 1)
+			numpad.OnDown(ply, Data.Anim_NumpadKey, "Proxyent_TF2CloakEffect_Numpad", ent.ProxyentCloakEffect, true, Data.Anim_Toggle == 1, Data.Anim_StartOn == 1)
+			numpad.OnUp(ply, Data.Anim_NumpadKey, "Proxyent_TF2CloakEffect_Numpad", ent.ProxyentCloakEffect, false, Data.Anim_Toggle == 1, Data.Anim_StartOn == 1)
+			ent.ProxyentCloakEffect:SetCloakAnimState(Data.Anim_StartOn == 1)
 			ent.ProxyentCloakEffect:SetCloakAnimTimeIn(Data.Anim_TimeIn)
 			ent.ProxyentCloakEffect:SetCloakAnimTimeOut(Data.Anim_TimeOut)
 		else
